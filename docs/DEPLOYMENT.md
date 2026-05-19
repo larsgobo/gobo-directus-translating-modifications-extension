@@ -10,8 +10,8 @@ This repo is **only** the extension (`gobo-translations-grid`), not a full Direc
 
 | Workflow | Trigger | Result |
 |----------|---------|--------|
-| **Build extension** (`deploy.yml`) | Every push to `main` | Builds + validates + uploads artifact (should be green) |
-| **Deploy extension (Docker volume)** | Manual | **Preferred** if old `custom-directus-gobo` deploy worked |
+| **Build extension** (`deploy.yml`) | Every push to `main` | **Build only** — green check does **not** deploy to VPS |
+| **Deploy extension (Docker volume)** | Manual | **Deploy** — same steps as old `custom-directus-gobo` / `deploy.ps1` |
 | **Deploy extension (SSH)** | Manual only | SCP to host path; may timeout on port 22 |
 | **Deploy extension (self-hosted)** | Manual (enable push later) | Full auto deploy when runner is on VPS |
 
@@ -128,9 +128,18 @@ Do **not** use `gobo-dk-gtm_directus_extensions` as `DOCKER_VOLUME_NAME` in the 
 
 **Steps:**
 
-1. GitHub → **gobo-directus-translating-modifications-extension** → Settings → Secrets → add the five secrets (copy values from `custom-directus-gobo`; GitHub cannot copy them for you).
-2. Actions → **Deploy extension (SSH)** → **Run workflow**.
-3. If it still times out on port 22, check `VPS_PORT` — your old setup may use a custom port that works from GitHub.
+1. GitHub → **gobo-directus-translating-modifications-extension** → Settings → Secrets → add the five secrets (copy values from `custom-directus-gobo`).
+2. Actions → **Deploy extension (Docker volume)** → **Run workflow** (not “Build extension”).
+3. Or deploy from your PC: copy `scripts/deploy.config.example.ps1` → `scripts/deploy.config.ps1`, then `.\scripts\deploy.ps1`.
+
+**Local deploy (Windows, like old repo):**
+
+```powershell
+cd "c:\Users\LarsThyregod\directus\custom extension\gobo-translation-modifications"
+copy scripts\deploy.config.example.ps1 scripts\deploy.config.ps1
+# edit deploy.config.ps1 with VPS host, user, key path, volume name
+.\scripts\deploy.ps1
+```
 
 You can keep `DEPLOY_*` secrets as aliases; the workflow prefers `VPS_*` when both exist.
 
