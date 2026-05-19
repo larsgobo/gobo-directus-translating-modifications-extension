@@ -18,26 +18,62 @@ GitHub (push to main)
 
 ---
 
-## Step 1: Mount extensions in Easypanel
+## Step 1: Extensions volume in Easypanel
 
-1. Open **Easypanel** → project **`gobo-dk-gtm`** → service **`directus`**.
-2. Go to **Storage** (or **Advanced** → mounts, depending on Easypanel version).
-3. Add a **Volume** mount:
-   - **Volume name:** `custom-extensions` (or any name)
-   - **Mount path in container:** `/directus/extensions/gobo-translation-modifications`
+You already have this (Storage tab):
 
-   Directus expects each extension in its own subfolder with `package.json` and `dist/index.js`.
+| Volume name | Container path |
+|-------------|----------------|
+| `extensions` | `/directus/extensions` |
 
-4. **Redeploy** the `directus` service once after adding the mount.
+No extra mount is required. Each extension lives in a **subfolder** under `/directus/extensions/`, e.g. `gobo-translation-modifications/`.
 
-5. On the server, note the host path Easypanel creates (typical pattern):
+If the `extensions` volume is missing, add a **Volume** mount with name `extensions` and path `/directus/extensions`, then redeploy `directus`.
+
+5. **Host path on the VPS** (Easypanel standard — [docs](https://easypanel.io/docs/services/app#mounts)):
 
    ```text
-   /etc/easypanel/projects/gobo-dk-gtm/directus/volumes/custom-extensions
+   /etc/easypanel/projects/gobo-dk-gtm/directus/volumes/extensions
    ```
 
-   Use that path as `DEPLOY_EXTENSIONS_PATH` in GitHub (see Step 3).  
-   If Easypanel shows a different path in the UI, use that exact path.
+   Your Storage tab already has a volume named **`extensions`** → `/directus/extensions`.
+
+6. **GitHub secret `DEPLOY_EXTENSIONS_PATH`** must be the **extension subfolder** inside that volume:
+
+   ```text
+   /etc/easypanel/projects/gobo-dk-gtm/directus/volumes/extensions/gobo-translation-modifications
+   ```
+
+   After deploy, the container sees:
+
+   ```text
+   /directus/extensions/gobo-translation-modifications/package.json
+   /directus/extensions/gobo-translation-modifications/dist/index.js
+   ```
+
+### Verify the path (no SSH required)
+
+Use **Easypanel → gobo-dk-gtm → directus → Console** (or Terminal icon on the service):
+
+```bash
+# Host path (run on the VPS host — use Easypanel "Launcher" / host shell if available)
+ls -la /etc/easypanel/projects/gobo-dk-gtm/directus/volumes/extensions/
+
+# Inside the Directus container
+ls -la /directus/extensions/
+```
+
+If the host path exists, create the extension folder once:
+
+```bash
+mkdir -p /etc/easypanel/projects/gobo-dk-gtm/directus/volumes/extensions/gobo-translation-modifications
+```
+
+From **inside the Directus container** console:
+
+```bash
+ls -la /directus/extensions/gobo-translation-modifications/
+```
 
 ### Recommended Directus env (optional)
 
@@ -72,7 +108,7 @@ Repo → **Settings** → **Secrets and variables** → **Actions** → **New re
 | `DEPLOY_HOST` | `168.231.108.8` | Yes |
 | `DEPLOY_USER` | `root` or your SSH user | Yes |
 | `DEPLOY_SSH_KEY` | Private key (full PEM contents) | Yes |
-| `DEPLOY_EXTENSIONS_PATH` | `/etc/easypanel/projects/gobo-dk-gtm/directus/volumes/custom-extensions` | Yes |
+| `DEPLOY_EXTENSIONS_PATH` | `/etc/easypanel/projects/gobo-dk-gtm/directus/volumes/extensions/gobo-translation-modifications` | Yes |
 | `DEPLOY_SSH_PORT` | `22` | No (default 22) |
 | `EASYPANEL_DEPLOY_WEBHOOK` | Deploy webhook URL from Easypanel | No |
 
