@@ -1,12 +1,14 @@
-name: Build and deploy extension
+name: Build extension
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: deploy-extension
+  group: build-extension
   cancel-in-progress: true
 
 jobs:
@@ -33,33 +35,10 @@ jobs:
           path: |
             dist/
             package.json
-          retention-days: 7
+          retention-days: 14
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: extension-dist
-          path: deploy-bundle
-
-      - name: Copy extension to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
-          source: deploy-bundle/package.json,deploy-bundle/dist
-          target: ${{ secrets.DEPLOY_EXTENSIONS_PATH }}
-          strip_components: 1
-          overwrite: true
-
-      - name: Trigger Easypanel redeploy (optional)
-        env:
-          WEBHOOK: ${{ secrets.EASYPANEL_DEPLOY_WEBHOOK }}
-        if: env.WEBHOOK != ''
-        run: curl -fsS -X POST "$WEBHOOK"
+      - name: Deploy note
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "::notice::Build succeeded. GitHub-hosted runners cannot SSH to your VPS (port 22 timeout)."
+          echo "::notice::Deploy using scripts/vps-update-extension.sh on the server, or install a self-hosted runner (see docs/DEPLOYMENT.md)."

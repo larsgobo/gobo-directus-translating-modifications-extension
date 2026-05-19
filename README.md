@@ -26,9 +26,10 @@ npm run link
 
 Enable **Gobo Translations Grid** under Settings → Extensions, then hard-refresh the Data Studio.
 
-## Automatic deploy (Easypanel / VPS)
+## Deploy (Easypanel / VPS)
 
-See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for GitHub Actions setup (push to `main` deploys via SSH). Works with **public or private** repos using GitHub secrets.
+- **CI:** Every push to `main` runs **Build extension** (compile + validate).
+- **Deploy:** GitHub cannot SSH to most Hostinger VPS instances (`port 22 timeout`). Use **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** — recommended: run `scripts/vps-update-extension.sh` on the server, or install a self-hosted runner.
 
 ## Assign the interface
 

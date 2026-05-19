@@ -1,0 +1,61 @@
+# Optional: only works if your VPS accepts SSH from the public internet (port 22).
+# Hostinger often blocks this from GitHub Actions — use vps-update script or self-hosted runner instead.
+
+name: Deploy extension (SSH)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+          npm run validate
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-dist
+          path: |
+            dist/
+            package.json
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-dist
+          path: deploy-bundle
+
+      - name: Copy extension to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          timeout: 120s
+          source: deploy-bundle/package.json,deploy-bundle/dist
+          target: ${{ secrets.DEPLOY_EXTENSIONS_PATH }}
+          strip_components: 1
+          overwrite: true
+
+      - name: Trigger Easypanel redeploy (optional)
+        env:
+          WEBHOOK: ${{ secrets.EASYPANEL_DEPLOY_WEBHOOK }}
+        if: env.WEBHOOK != ''
+        run: curl -fsS -X POST "$WEBHOOK"

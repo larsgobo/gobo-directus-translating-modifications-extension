@@ -1,0 +1,41 @@
+# Deploy on push using a GitHub Actions runner installed ON your VPS (recommended for Easypanel).
+# Setup: https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners
+# Label the runner: easypanel
+
+name: Deploy extension (self-hosted runner)
+
+on:
+  # Enable `push: branches: [main]` after you install a self-hosted runner labeled `easypanel`
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: [self-hosted, easypanel]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+          npm run validate
+
+      - name: Copy to Directus extensions volume
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_EXTENSIONS_PATH }}
+        run: |
+          test -n "$DEPLOY_PATH" || { echo "Set DEPLOY_EXTENSIONS_PATH secret"; exit 1; }
+          mkdir -p "$DEPLOY_PATH"
+          cp package.json "$DEPLOY_PATH/"
+          rm -rf "$DEPLOY_PATH/dist"
+          cp -r dist "$DEPLOY_PATH/"
+
+      - name: Trigger Easypanel redeploy (optional)
+        env:
+          WEBHOOK: ${{ secrets.EASYPANEL_DEPLOY_WEBHOOK }}
+        if: env.WEBHOOK != ''
+        run: curl -fsS -X POST "$WEBHOOK"
