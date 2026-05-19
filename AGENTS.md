@@ -8,14 +8,15 @@ This file provides guidance to AI coding assistants when working with code in th
 
 ## This repository
 
-**gobo-translation-modifications** is a **Directus custom extension** (not the Directus core monorepo). It extends a live Directus instance used for Gobo content and translations.
+**gobo-translation-modifications** is a **Directus app interface extension** (`gobo-translations-grid`) for Gobo. It replaces the built-in 2-column translations UI with a horizontal grid showing **all languages at once**.
 
 When implementing or debugging:
 
-- Follow [Directus extension docs](https://directus.io/docs/guides/extensions/overview) and patterns from `@directus/extensions-sdk`.
-- Use the **user-directus** MCP server to inspect collections, fields, relations, flows, and items in the connected project—prefer MCP over guessing schema.
-- Build with TypeScript, ES modules, and Vue 3 where the extension type requires app UI.
-- Output compiled extension artifacts to `dist/`; install or symlink into the target Directus `extensions/` directory per your deployment setup.
+- Follow [Directus interface extension docs](https://directus.io/docs/guides/extensions/app-extensions/interfaces) and `@directus/extensions-sdk`.
+- Use **user-directus** MCP to inspect collections, fields, and relations—do not invent schema.
+- Core relation staging is adapted from Directus `translations` interface (`src/composables/`, MIT).
+- Build with TypeScript, ESM, Vue 3; output to `dist/` and deploy to Directus `extensions/`.
+- Interface ID: `gobo-translations-grid` — assign on any `special: ["translations"]` field.
 
 ### Extension development commands
 
@@ -34,7 +35,15 @@ npm run dev
 
 Enable `EXTENSIONS_AUTO_RELOAD=true` on the Directus instance during local development when supported.
 
-### Extension types (reference)
+### This extension
+
+| Property | Value |
+|----------|--------|
+| Type | `interface` |
+| ID | `gobo-translations-grid` |
+| `localTypes` | `translations` |
+
+### Other extension types (reference)
 
 | Type | Purpose |
 |------|---------|

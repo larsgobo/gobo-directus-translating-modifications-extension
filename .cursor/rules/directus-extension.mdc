@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Gobo Directus extension
 
-This repo is a **Directus custom extension**, not the Directus core monorepo. Full guidance: `AGENTS.md`.
+This repo is a **Directus interface extension** (`gobo-translations-grid`) for multi-column translations. Full guidance: `AGENTS.md`.
 
 ## Before coding
 

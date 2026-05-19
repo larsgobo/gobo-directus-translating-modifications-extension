@@ -44,3 +44,6 @@ tmp/
 
 # Optional local Directus link metadata
 .directus/
+
+# Upstream reference copies (local dev only)
+.upstream/
