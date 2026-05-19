@@ -15,17 +15,49 @@ This repo is **only** the extension (`gobo-translations-grid`), not a full Direc
 | **Deploy extension (SSH)** | Manual only | SCP to host path; may timeout on port 22 |
 | **Deploy extension (self-hosted)** | Manual (enable push later) | Full auto deploy when runner is on VPS |
 
-### Why SSH deploy fails from GitHub
+### Why “Upload zip to VPS” fails (`dial tcp … i/o timeout`)
 
-GitHub Actions runners connect **from the internet** to your VPS on port **22**. Hostinger / Easypanel often **block inbound SSH** from GitHub’s IPs. Your PC may still SSH in; GitHub cannot.
+The zip step succeeded; GitHub **cannot open SSH** to your VPS.
 
-Error you saw:
+**Most common causes (check in order):**
+
+1. **Secrets not in this repo** — GitHub secrets are **per repository**. Values in `custom-directus-gobo` are **not** copied to `gobo-directus-translating-modifications-extension`. Re-create all five secrets in the **new** repo (Settings → Secrets → Actions).
+2. **Wrong port** — copy `VPS_PORT` from the old repo (Hostinger often uses a non-22 port).
+3. **Firewall** — Hostinger may block GitHub’s IP ranges even when your PC can SSH in.
+
+Error:
 
 ```text
-dial tcp <host>:22: i/o timeout
+dial tcp <host>:<port>: i/o timeout
 ```
 
-This is a **firewall / network** issue, not wrong `DEPLOY_EXTENSIONS_PATH`.
+**If old repo still deploys from GitHub but this one does not:** compare secrets side-by-side in both repos (names and that all five exist in the new repo).
+
+---
+
+## Fastest fix when GitHub SSH times out
+
+### A) Deploy from your PC (same as old `deploy.ps1`)
+
+```powershell
+cd "c:\Users\LarsThyregod\directus\custom extension\gobo-translation-modifications"
+copy scripts\deploy.config.example.ps1 scripts\deploy.config.ps1
+# Set DeploySshHost, DeploySshUser, DeploySshPort, DeploySshKeyPath, DeployDirectusVolumeName
+.\scripts\deploy.ps1
+```
+
+Your PC can reach the VPS even when GitHub cannot.
+
+### B) Build on the VPS (no inbound SSH from GitHub)
+
+SSH to the server and run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/larsgobo/gobo-directus-translating-modifications-extension/main/scripts/vps-update-extension.sh -o /tmp/vps-update.sh
+chmod +x /tmp/vps-update.sh
+/tmp/vps-update.sh
+docker service update --force gobo-dk-gtm_directus
+```
 
 ---
 

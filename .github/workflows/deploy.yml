@@ -44,6 +44,29 @@ jobs:
           zip -r ext.zip package.json dist/
           unzip -l ext.zip
 
+      - name: Check deploy secrets (this repository only)
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          HAS_KEY: ${{ secrets.VPS_SSH_KEY != '' || secrets.DEPLOY_SSH_KEY != '' }}
+          DOCKER_VOLUME_NAME: ${{ secrets.DOCKER_VOLUME_NAME }}
+        run: |
+          set -euo pipefail
+          HOST="${VPS_HOST:-$DEPLOY_HOST}"
+          USER="${VPS_USER:-$DEPLOY_USER}"
+          if [ -z "$HOST" ] || [ -z "$USER" ] || [ "$HAS_KEY" != "true" ]; then
+            echo "::error::Missing VPS secrets in gobo-directus-translating-modifications-extension."
+            echo "::error::Secrets are per-repo — copy VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_PORT, DOCKER_VOLUME_NAME from custom-directus-gobo."
+            exit 1
+          fi
+          if [ -z "$DOCKER_VOLUME_NAME" ]; then
+            echo "::error::Set DOCKER_VOLUME_NAME=gobo-dk-gtm_directus_extensions"
+            exit 1
+          fi
+          echo "Secrets look configured. Will connect to ${USER}@${HOST} (port from VPS_PORT secret)."
+
       - name: Upload zip to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
