@@ -1,18 +1,27 @@
-name: Build extension
+# Deploy extension to VPS (same flow as custom-directus-gobo "Deploy Extension").
+# On every push to main: build → zip → SCP → Docker volume → restart Directus.
+# Secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_PORT, DOCKER_VOLUME_NAME
+
+name: Deploy extension
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: build-extension
+  group: deploy-extension
   cancel-in-progress: true
 
+env:
+  DIRECTUS_SERVICE: gobo-dk-gtm_directus
+  EXTENSION_FOLDER: gobo-translation-modifications
+  EXT_TMP_PATH: /root/ext-tmp
+  REMOTE_ZIP: /tmp/gobo-translation-modifications.zip
+  REMOTE_TMP: /tmp/gobo-ext-deploy-tmp
+
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,23 +31,75 @@ jobs:
           node-version: '22'
           cache: npm
 
-      - name: Install and build
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build extension
         run: |
-          npm ci
           npm run build
           npm run validate
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: extension-dist
-          path: |
-            dist/
-            package.json
-          retention-days: 14
-
-      - name: Deploy note
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Create deployment zip
         run: |
-          echo "::notice::Build succeeded. GitHub-hosted runners cannot SSH to your VPS (port 22 timeout)."
-          echo "::notice::Deploy using scripts/vps-update-extension.sh on the server, or install a self-hosted runner (see docs/DEPLOYMENT.md)."
+          zip -r ext.zip package.json dist/
+          unzip -l ext.zip
+
+      - name: Upload zip to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST != '' && secrets.VPS_HOST || secrets.DEPLOY_HOST }}
+          username: ${{ secrets.VPS_USER != '' && secrets.VPS_USER || secrets.DEPLOY_USER }}
+          key: ${{ secrets.VPS_SSH_KEY != '' && secrets.VPS_SSH_KEY || secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT != '' && secrets.VPS_PORT || secrets.DEPLOY_SSH_PORT || 22 }}
+          timeout: 120s
+          source: ext.zip
+          target: /tmp/gobo-translation-modifications.zip
+          overwrite: true
+
+      - name: Install into Directus volume and restart
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST != '' && secrets.VPS_HOST || secrets.DEPLOY_HOST }}
+          username: ${{ secrets.VPS_USER != '' && secrets.VPS_USER || secrets.DEPLOY_USER }}
+          key: ${{ secrets.VPS_SSH_KEY != '' && secrets.VPS_SSH_KEY || secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT != '' && secrets.VPS_PORT || secrets.DEPLOY_SSH_PORT || 22 }}
+          timeout: 180s
+          script: |
+            set -euo pipefail
+            VOLUME="${{ secrets.DOCKER_VOLUME_NAME }}"
+            EXT="${{ env.EXTENSION_FOLDER }}"
+            EXT_TMP="${{ env.EXT_TMP_PATH }}"
+            HOST_EXT_DIR="${EXT_TMP}/${EXT}"
+            REMOTE_ZIP="${{ env.REMOTE_ZIP }}"
+            REMOTE_TMP="${{ env.REMOTE_TMP }}"
+            SERVICE="${{ env.DIRECTUS_SERVICE }}"
+
+            if [ -z "$VOLUME" ]; then
+              echo "Set DOCKER_VOLUME_NAME to gobo-dk-gtm_directus_extensions" >&2
+              exit 1
+            fi
+
+            rm -rf "$REMOTE_TMP"
+            mkdir -p "$REMOTE_TMP"
+            unzip -o -q "$REMOTE_ZIP" -d "$REMOTE_TMP"
+            rm -rf "$HOST_EXT_DIR"
+            mkdir -p "$HOST_EXT_DIR"
+            cp -R "$REMOTE_TMP/dist" "$HOST_EXT_DIR/"
+            cp "$REMOTE_TMP/package.json" "$HOST_EXT_DIR/"
+            rm -rf "$REMOTE_TMP" "$REMOTE_ZIP"
+
+            docker run --rm \
+              -v "${VOLUME}:/directus/extensions" \
+              -v "${EXT_TMP}:/tmp/ext" \
+              --user root \
+              alpine:3.20 sh -ec "
+                set -e
+                rm -rf '/directus/extensions/${EXT}'
+                cp -R '/tmp/ext/${EXT}' '/directus/extensions/'
+                chown -R 1000:1000 '/directus/extensions/${EXT}'
+                echo 'Extension installed at /directus/extensions/${EXT}/'
+                ls -la '/directus/extensions/${EXT}/'
+                ls -la '/directus/extensions/${EXT}/dist/'
+              "
+
+            docker service update --force "${SERVICE}"

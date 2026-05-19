@@ -10,8 +10,8 @@ This repo is **only** the extension (`gobo-translations-grid`), not a full Direc
 
 | Workflow | Trigger | Result |
 |----------|---------|--------|
-| **Build extension** (`deploy.yml`) | Every push to `main` | **Build only** — green check does **not** deploy to VPS |
-| **Deploy extension (Docker volume)** | Manual | **Deploy** — same steps as old `custom-directus-gobo` / `deploy.ps1` |
+| **Deploy extension** (`deploy.yml`) | Every push to `main` | **Full deploy** — zip, upload, Docker volume, restart (like old repo) |
+| **CI build** (`build.yml`) | Pull requests only | Build + validate only (no VPS) |
 | **Deploy extension (SSH)** | Manual only | SCP to host path; may timeout on port 22 |
 | **Deploy extension (self-hosted)** | Manual (enable push later) | Full auto deploy when runner is on VPS |
 
@@ -129,7 +129,7 @@ Do **not** use `gobo-dk-gtm_directus_extensions` as `DOCKER_VOLUME_NAME` in the 
 **Steps:**
 
 1. GitHub → **gobo-directus-translating-modifications-extension** → Settings → Secrets → add the five secrets (copy values from `custom-directus-gobo`).
-2. Actions → **Deploy extension (Docker volume)** → **Run workflow** (not “Build extension”).
+2. Push to `main` runs **Deploy extension** automatically, or Actions → **Deploy extension** → Run workflow.
 3. Or deploy from your PC: copy `scripts/deploy.config.example.ps1` → `scripts/deploy.config.ps1`, then `.\scripts\deploy.ps1`.
 
 **Local deploy (Windows, like old repo):**
