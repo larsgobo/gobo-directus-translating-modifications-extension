@@ -28,7 +28,7 @@ Enable **Gobo Translations Grid** under Settings → Extensions, then hard-refre
 
 ## Deploy (Easypanel / VPS)
 
-- **CI:** Every push to `main` runs **Build extension** (compile + validate).
+- **Deploy:** Every push to `main` runs **Deploy extension** (build, zip, upload to VPS, restart Directus).
 - **Deploy:** GitHub cannot SSH to most Hostinger VPS instances (`port 22 timeout`). Use **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** — recommended: run `scripts/vps-update-extension.sh` on the server, or install a self-hosted runner.
 
 ## Assign the interface

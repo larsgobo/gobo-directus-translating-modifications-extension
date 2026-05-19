@@ -116,7 +116,7 @@ If your older Easypanel project already deploys via GitHub with these secrets, c
 
 Set `DOCKER_VOLUME_NAME` = `gobo-dk-gtm_directus_extensions`
 
-Use workflow **Deploy extension (Docker volume)** — same pattern as your old `custom-directus-gobo` deploy.
+Push to `main` runs **Deploy extension** — same pattern as your old `custom-directus-gobo` deploy.
 
 For **Deploy extension (SSH)** (SCP to host path), use secret `DEPLOY_EXTENSIONS_PATH` instead:
 
@@ -194,6 +194,6 @@ Not required for the **git pull on VPS** method.
 
 ## Download build artifact (no VPS script)
 
-1. Open latest green **Build extension** run on GitHub Actions.
+1. Open latest green **Deploy extension** run on GitHub Actions (must show zip + VPS steps).
 2. Download artifact **extension-dist**.
 3. Upload `package.json` + `dist/` into the extensions folder on the server (SFTP / Easypanel file tools).
