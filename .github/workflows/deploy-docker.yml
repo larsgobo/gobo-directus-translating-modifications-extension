@@ -1,0 +1,98 @@
+# Deploy like custom-directus-gobo: copy into Docker volume + restart Directus service.
+# Secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_PORT, DOCKER_VOLUME_NAME
+# Run manually: Actions → Deploy extension (Docker volume) → Run workflow
+
+name: Deploy extension (Docker volume)
+
+on:
+  workflow_dispatch:
+
+env:
+  DIRECTUS_SERVICE: gobo-dk-gtm_directus
+  EXTENSION_FOLDER: gobo-translation-modifications
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+          npm run validate
+
+      - name: Package extension zip
+        run: |
+          mkdir -p "staging/${EXTENSION_FOLDER}"
+          cp package.json "staging/${EXTENSION_FOLDER}/"
+          cp -R dist "staging/${EXTENSION_FOLDER}/"
+          cd staging && zip -r ../ext.zip .
+
+      - name: Upload deploy zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: ext.zip
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download extension zip
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-zip
+          path: .
+
+      - name: Copy zip to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST != '' && secrets.VPS_HOST || secrets.DEPLOY_HOST }}
+          username: ${{ secrets.VPS_USER != '' && secrets.VPS_USER || secrets.DEPLOY_USER }}
+          key: ${{ secrets.VPS_SSH_KEY != '' && secrets.VPS_SSH_KEY || secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT != '' && secrets.VPS_PORT || secrets.DEPLOY_SSH_PORT || 22 }}
+          timeout: 120s
+          source: ext.zip
+          target: /tmp/
+          overwrite: true
+
+      - name: Install into Directus volume and restart
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST != '' && secrets.VPS_HOST || secrets.DEPLOY_HOST }}
+          username: ${{ secrets.VPS_USER != '' && secrets.VPS_USER || secrets.DEPLOY_USER }}
+          key: ${{ secrets.VPS_SSH_KEY != '' && secrets.VPS_SSH_KEY || secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT != '' && secrets.VPS_PORT || secrets.DEPLOY_SSH_PORT || 22 }}
+          timeout: 120s
+          script: |
+            set -euo pipefail
+            VOLUME="${{ secrets.DOCKER_VOLUME_NAME }}"
+            SERVICE="${{ env.DIRECTUS_SERVICE }}"
+            EXT="${{ env.EXTENSION_FOLDER }}"
+            DEPLOY_TMP="/tmp/gobo-ext-deploy-$$"
+
+            if [ -z "$VOLUME" ]; then
+              echo "Set DOCKER_VOLUME_NAME (e.g. gobo-dk-gtm_directus_extensions)" >&2
+              exit 1
+            fi
+
+            docker run --rm \
+              -v "${VOLUME}:/directus/extensions" \
+              -v /tmp/ext.zip:/tmp/ext.zip:ro \
+              alpine:3.20 sh -ec "
+                apk add --no-cache unzip >/dev/null
+                rm -rf '${DEPLOY_TMP}'
+                unzip -q /tmp/ext.zip -d '${DEPLOY_TMP}'
+                rm -rf '/directus/extensions/${EXT}'
+                cp -R '${DEPLOY_TMP}/${EXT}' '/directus/extensions/'
+                ls -la '/directus/extensions/${EXT}/'
+              "
+
+            docker service update --force "${SERVICE}"

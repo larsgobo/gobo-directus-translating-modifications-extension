@@ -11,7 +11,8 @@ This repo is **only** the extension (`gobo-translations-grid`), not a full Direc
 | Workflow | Trigger | Result |
 |----------|---------|--------|
 | **Build extension** (`deploy.yml`) | Every push to `main` | Builds + validates + uploads artifact (should be green) |
-| **Deploy extension (SSH)** | Manual only | Often fails: `dial tcp :22: i/o timeout` |
+| **Deploy extension (Docker volume)** | Manual | **Preferred** if old `custom-directus-gobo` deploy worked |
+| **Deploy extension (SSH)** | Manual only | SCP to host path; may timeout on port 22 |
 | **Deploy extension (self-hosted)** | Manual (enable push later) | Full auto deploy when runner is on VPS |
 
 ### Why SSH deploy fails from GitHub
@@ -105,15 +106,25 @@ If your older Easypanel project already deploys via GitHub with these secrets, c
 | `VPS_USER` | SSH user |
 | `VPS_SSH_KEY` | Private key |
 | `VPS_PORT` | SSH port — **often not 22 on Hostinger** |
-| `DOCKER_VOLUME_NAME` | Easypanel volume name, usually `extensions` |
+| `DOCKER_VOLUME_NAME` | **Docker Swarm volume name** (see below) |
 
-This repo’s workflow builds the deploy path as:
+**Your server (confirmed):**
 
 ```text
-/etc/easypanel/projects/gobo-dk-gtm/directus/volumes/{DOCKER_VOLUME_NAME}/gobo-translation-modifications
+/directus/extensions => gobo-dk-gtm_directus_extensions
 ```
 
-So if `DOCKER_VOLUME_NAME` = `extensions`, target matches your Easypanel Storage mount.
+Set `DOCKER_VOLUME_NAME` = `gobo-dk-gtm_directus_extensions`
+
+Use workflow **Deploy extension (Docker volume)** — same pattern as your old `custom-directus-gobo` deploy.
+
+For **Deploy extension (SSH)** (SCP to host path), use secret `DEPLOY_EXTENSIONS_PATH` instead:
+
+```text
+/etc/easypanel/projects/gobo-dk-gtm/directus/volumes/extensions/gobo-translation-modifications
+```
+
+Do **not** use `gobo-dk-gtm_directus_extensions` as `DOCKER_VOLUME_NAME` in the SCP workflow — that name is only for Docker volume mounts.
 
 **Steps:**
 
