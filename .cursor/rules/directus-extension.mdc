@@ -1,0 +1,29 @@
+---
+description: Directus custom extension (gobo-translation-modifications) — read AGENTS.md for full guidance
+alwaysApply: true
+---
+
+# Gobo Directus extension
+
+This repo is a **Directus custom extension**, not the Directus core monorepo. Full guidance: `AGENTS.md`.
+
+## Before coding
+
+1. Read `AGENTS.md` for architecture, style, and PR conventions.
+2. Use **user-directus** MCP (`collections`, `fields`, `schema`, `items`, `flows`, etc.) to inspect the live project—do not invent collection or field names.
+3. Match existing patterns in this repo (TypeScript, ESM, Vue 3 for app extensions).
+
+## Build & deploy
+
+- `npm run build` / `npm run dev` (or pnpm equivalents per `package.json`)
+- Ship `dist/` into the target Directus `extensions/` folder
+- Prefer `@directus/extensions-sdk` composables (`useApi`, `useStores`, `useCollection`) in app code
+
+## Style
+
+- TypeScript, `const` over `let`, Vitest tests as `*.test.ts` beside source
+- Minimal diffs; follow ESLint/Prettier when configured in this repo
+
+## Scope
+
+- Monorepo commands (`pnpm --filter @directus/api`), changesets, and blackbox tests apply only to **upstream Directus core**, not this extension unless explicitly working there.
