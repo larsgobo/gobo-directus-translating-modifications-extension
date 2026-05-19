@@ -95,12 +95,40 @@ The runner copies files locally (no port 22 from GitHub).
 
 ---
 
-## Option C: Open SSH for GitHub (advanced)
+## Option C: Reuse secrets from `custom-directus-gobo` (SSH deploy)
 
-In Hostinger firewall, allow inbound **TCP 22** from GitHub Actions IP ranges (changes often):  
+If your older Easypanel project already deploys via GitHub with these secrets, copy the **same values** into this repo:
+
+| Secret (old repo) | Used for |
+|-------------------|----------|
+| `VPS_HOST` | Server IP |
+| `VPS_USER` | SSH user |
+| `VPS_SSH_KEY` | Private key |
+| `VPS_PORT` | SSH port — **often not 22 on Hostinger** |
+| `DOCKER_VOLUME_NAME` | Easypanel volume name, usually `extensions` |
+
+This repo’s workflow builds the deploy path as:
+
+```text
+/etc/easypanel/projects/gobo-dk-gtm/directus/volumes/{DOCKER_VOLUME_NAME}/gobo-translation-modifications
+```
+
+So if `DOCKER_VOLUME_NAME` = `extensions`, target matches your Easypanel Storage mount.
+
+**Steps:**
+
+1. GitHub → **gobo-directus-translating-modifications-extension** → Settings → Secrets → add the five secrets (copy values from `custom-directus-gobo`; GitHub cannot copy them for you).
+2. Actions → **Deploy extension (SSH)** → **Run workflow**.
+3. If it still times out on port 22, check `VPS_PORT` — your old setup may use a custom port that works from GitHub.
+
+You can keep `DEPLOY_*` secrets as aliases; the workflow prefers `VPS_*` when both exist.
+
+---
+
+## Option D: Open SSH port 22 for GitHub (advanced)
+
+In Hostinger firewall, allow inbound **TCP 22** from GitHub Actions IP ranges:  
 https://api.github.com/meta (see `actions` IPs)
-
-Then run **Actions → Deploy extension (SSH) → Run workflow** manually.
 
 ---
 
@@ -120,10 +148,12 @@ EXTENSIONS_AUTO_RELOAD=true
 
 ## Enable in Directus
 
-1. **Settings → Extensions** → enable **Gobo Translations Grid**
+1. **Settings → Extensions** → enable **Gobo Translations Grid** (`gobo-translation-modifications`)
 2. Hard-refresh admin (Ctrl+Shift+R)
 
 Translation fields should use interface `gobo-translations-grid` on `products`, `cms_pages`, `block_hero`, `block_richtext`.
+
+**Note:** `@gobo/custom-extensions` / `products-translations-matrix` (disabled in your screenshot) is a **different** older bundle. This repo installs **`gobo-translation-modifications`** with interface id **`gobo-translations-grid`**.
 
 ---
 

@@ -1,10 +1,16 @@
-# Optional: only works if your VPS accepts SSH from the public internet (port 22).
-# Hostinger often blocks this from GitHub Actions — use vps-update script or self-hosted runner instead.
+# Deploy via SSH to Easypanel VPS.
+# Uses the same secret names as larsgobo/custom-directus-gobo when possible.
+# Run manually: Actions → Deploy extension (SSH) → Run workflow
 
 name: Deploy extension (SSH)
 
 on:
   workflow_dispatch:
+
+env:
+  EASYPANEL_PROJECT: gobo-dk-gtm
+  EASYPANEL_SERVICE: directus
+  EXTENSION_FOLDER: gobo-translation-modifications
 
 jobs:
   build:
@@ -41,16 +47,58 @@ jobs:
           name: extension-dist
           path: deploy-bundle
 
+      - name: Resolve SSH target and deploy path
+        id: cfg
+        env:
+          DEPLOY_EXTENSIONS_PATH: ${{ secrets.DEPLOY_EXTENSIONS_PATH }}
+          DOCKER_VOLUME_NAME: ${{ secrets.DOCKER_VOLUME_NAME }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+        run: |
+          set -euo pipefail
+
+          HOST="${VPS_HOST:-$DEPLOY_HOST}"
+          USER="${VPS_USER:-$DEPLOY_USER}"
+          PORT="${VPS_PORT:-${DEPLOY_SSH_PORT:-22}}"
+
+          if [ -z "$HOST" ] || [ -z "$USER" ]; then
+            echo "Set VPS_HOST + VPS_USER (or DEPLOY_HOST + DEPLOY_USER) in repository secrets." >&2
+            exit 1
+          fi
+
+          if [ -n "$DEPLOY_EXTENSIONS_PATH" ]; then
+            TARGET="$DEPLOY_EXTENSIONS_PATH"
+          elif [ -n "$DOCKER_VOLUME_NAME" ]; then
+            if [[ "$DOCKER_VOLUME_NAME" == /* ]]; then
+              TARGET="${DOCKER_VOLUME_NAME%/}/${EXTENSION_FOLDER}"
+            else
+              TARGET="/etc/easypanel/projects/${EASYPANEL_PROJECT}/${EASYPANEL_SERVICE}/volumes/${DOCKER_VOLUME_NAME}/${EXTENSION_FOLDER}"
+            fi
+          else
+            echo "Set DEPLOY_EXTENSIONS_PATH or DOCKER_VOLUME_NAME (e.g. extensions) in secrets." >&2
+            exit 1
+          fi
+
+          echo "host=$HOST" >> "$GITHUB_OUTPUT"
+          echo "user=$USER" >> "$GITHUB_OUTPUT"
+          echo "port=$PORT" >> "$GITHUB_OUTPUT"
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "Deploying to ${USER}@${HOST}:${PORT} → ${TARGET}"
+
       - name: Copy extension to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          host: ${{ steps.cfg.outputs.host }}
+          username: ${{ steps.cfg.outputs.user }}
+          key: ${{ secrets.VPS_SSH_KEY != '' && secrets.VPS_SSH_KEY || secrets.DEPLOY_SSH_KEY }}
+          port: ${{ steps.cfg.outputs.port }}
           timeout: 120s
           source: deploy-bundle/package.json,deploy-bundle/dist
-          target: ${{ secrets.DEPLOY_EXTENSIONS_PATH }}
+          target: ${{ steps.cfg.outputs.target }}
           strip_components: 1
           overwrite: true
 
