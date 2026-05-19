@@ -59,6 +59,14 @@ chmod +x /tmp/vps-update.sh
 docker service update --force gobo-dk-gtm_directus
 ```
 
+If you see `npm: command not found`, the script uses Docker (`node:22-bookworm-slim`) to build automatically. Re-download the script after updates, or run:
+
+```bash
+docker run --rm -v /etc/easypanel/projects/gobo-dk-gtm/directus/volumes/extensions/gobo-translation-modifications:/app -w /app node:22-bookworm-slim bash -ec "npm ci && npm run build"
+chown -R 1000:1000 /etc/easypanel/projects/gobo-dk-gtm/directus/volumes/extensions/gobo-translation-modifications
+docker service update --force gobo-dk-gtm_directus
+```
+
 ---
 
 ## Recommended: deploy on the VPS (git pull + build)
