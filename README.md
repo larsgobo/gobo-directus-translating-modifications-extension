@@ -26,6 +26,10 @@ npm run link
 
 Enable **Gobo Translations Grid** under Settings → Extensions, then hard-refresh the Data Studio.
 
+## Automatic deploy (Easypanel / VPS)
+
+See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for GitHub Actions setup (push to `main` deploys via SSH). Works with **public or private** repos using GitHub secrets.
+
 ## Assign the interface
 
 For each collection with a `translations` field:
