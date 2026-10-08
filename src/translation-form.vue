@@ -52,9 +52,13 @@ const itemPrimaryKey = computed(
 const fields = computed(() => {
 	if (!props.relationInfo) return [];
 
+	// Alias fields stay in: relational ones (m2m/o2m/m2a/files — e.g. a
+	// per-language "experts" picker) and presentation ones (dividers, notices)
+	// render fine in the inline v-form. Only nested translations fields are
+	// skipped, since a translations grid inside a translations grid makes no sense.
 	return fieldsStore
 		.getFieldsForCollection(props.relationInfo.junctionCollection.collection)
-		.filter((field) => field.type !== 'alias' && field.meta?.hidden !== true);
+		.filter((field) => field.meta?.hidden !== true && !field.meta?.special?.includes('translations'));
 });
 
 const saveAllowed = computed(() => !props.disabled && !props.nonEditable);
